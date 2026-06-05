@@ -1,0 +1,2 @@
+statistic,n_weeks,bootstrap_reps,seed,theta_hat_rate_per_day,theta_hat_rate_per_30_days,bootstrap_mean_rate_per_day,bootstrap_sd_rate_per_day,percentile_ci_low_per_day,percentile_ci_high_per_day,bca_ci_low_per_day,bca_ci_high_per_day,bca_z0,bca_acceleration,bca_adjusted_quantile_low,bca_adjusted_quantile_high
+weekly_block_bootstrap_rate_per_day,224,10000,20260605,14.649235,439.477041,14.653005,0.821156,13.149825,16.368033,13.306853,16.610332,0.038612,0.040623,0.040611,0.986578

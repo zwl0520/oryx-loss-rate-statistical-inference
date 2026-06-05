@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+
+# LaTeX 编译临时文件
+*.aux
+*.log
+*.out
+*.toc
+*.synctex.gz
+*.bbl
+*.blg
+*.fdb_latexmk
+*.fls
+
+# 大型外部文件
+pandoc.exe
+pandoc.zip
+pandoc_tmp/
+reference_repo/
+
+# 系统文件
+.DS_Store
+Thumbs.db
+.claude/

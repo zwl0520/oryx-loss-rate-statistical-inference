@@ -1,0 +1,642 @@
+% !TEX program = xelatex
+\documentclass[12pt,a4paper]{ctexart}
+
+% ========== 页面布局 ==========
+\usepackage[top=2.5cm, bottom=2.5cm, left=2.8cm, right=2.8cm]{geometry}
+\usepackage{setspace}
+\onehalfspacing
+
+% ========== 数学与符号 ==========
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{newtxmath}
+\theoremstyle{definition}
+\newtheorem{definition}{定义}[section]
+
+% ========== 表格 ==========
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{multirow}
+\usepackage{longtable}
+
+% ========== 图形 ==========
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{subcaption}
+\usepackage{caption}
+\captionsetup[figure]{font=small,labelfont=bf,skip=6pt}
+\graphicspath{{../output/figures/}}
+
+% ========== 超链接与颜色 ==========
+\usepackage[colorlinks=true,linkcolor=blue,citecolor=blue,urlcolor=blue]{hyperref}
+
+% ========== 页眉页脚 ==========
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[C]{\small 俄乌装备损失率的“公平比较”——从估计偏误到区间估计}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+% ========== 标题格式 ==========
+\ctexset{
+  section = {
+    format = \bfseries\zihao{4}\centering,
+    aftername = \quad,
+  },
+  subsection = {
+    format = \bfseries\zihao{-4},
+    aftername = \quad,
+  },
+  subsubsection = {
+    format = \bfseries\zihao{-4},
+    aftername = \quad,
+  },
+}
+
+% ========== 标题信息 ==========
+\title{{\bfseries\zihao{3} 俄乌装备损失率的“公平比较”\\[5pt] ——从估计偏误到区间估计}}
+\author{}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+\vspace{10pt}
+
+\begin{center}
+\zihao{5}
+\begin{tabular}{rl}
+课程名称：& 数理统计 \\
+选题编号：& T1 \\
+提交日期：& 2026年6月 \\
+\end{tabular}
+\end{center}
+
+\vspace{20pt}
+
+% ========== 摘要 ==========
+\begin{center}
+\zihao{4}\bfseries 摘\quad 要
+\end{center}
+\vspace{-8pt}
+
+\noindent
+俄乌冲突中，双方公布的战报数据差异极大，如何客观估计双方真实装备损失率并检验其统计显著性是冲突数据分析的核心挑战。本文利用开源情报平台 Oryx 提供的双方经影像验证的装备损失记录（俄方 23,556 件，乌方 11,397 件，2022 年 2 月至 2026 年 6 月），结合乌克兰总参谋部官方战报数据（1,557 天累计），运用 Poisson 分布模型、区间估计、Bootstrap 和假设检验方法进行系统性统计推断。
+
+具体而言，本文基于 Poisson 假设，采用极大似然估计（MLE）获得日均损失率点估计，结果俄方 $\hat{\lambda}_{RU}=16.19$ 件/天、乌方 $\hat{\lambda}_{UA}=8.00$ 件/天，率比 $\hat{\rho}=2.02$（95\% CI: [1.98, 2.07]）；通过 Wald、Score 和 Exact（Garwood, 1936）三种方法构建置信区间，Monte Carlo 模拟表明 Exact CI 在小 $\lambda$ 下覆盖率最优（$\lambda=0.5$ 时 96.6\%），Wald CI 最低（91.9\%）；两独立 Poisson 条件精确检验（E-test）确认双方损失率差异极显著（$p < 0.0001$）；Block Bootstrap（$b=11$）标准误估计 0.99 是 IID Bootstrap（0.42）的 2.4 倍，表明忽略时间依赖性将严重低估不确定性。
+
+进一步的分层分析揭示：（1）双方月度损失比率从 2022 年初的 3.66:1 逆转为近期的 0.65:1，反映了战争性质的转变；（2）装备类型差异显著——俄方在装甲战车（AFV 4.49x、IFV 4.08x）和坦克（3.14x）上损失更多，乌方仅在装甲运兵车（APC 0.56x）上反超；（3）观测概率灵敏度分析表明 2.06:1 的率比在中等非对称观测下具有稳健性；（4）空间分析揭示顿涅茨克州集中了 44\% 的俄方影像验证损失；（5）乌克兰官方声称的俄军损失与影像验证数据之间存在 3–29 倍的系统性偏差。
+
+本文为该选题的两个核心统计问题——双方损失率的准确估计及其差异的显著性检验——提供了严格的统计回答，分析框架对冲突数据的客观推断具有方法论参考价值。
+
+\vspace{8pt}
+\noindent{\bfseries 关键词：}Poisson 分布；极大似然估计；置信区间；Block Bootstrap；双边比较；E-test；冲突数据
+
+\newpage
+
+% ========== 正文 ==========
+
+\section{引言}
+
+\subsection{问题背景}
+
+自 2022 年 2 月 24 日俄罗斯全面入侵乌克兰以来，双方均定期公布敌方装备损失数据。然而，这些官方战报数据之间存在巨大差异——例如，乌克兰总参谋部声称已摧毁超过 11,900 辆俄罗斯坦克（截至 2026 年 5 月），而影像验证数据仅确认约 4,000 辆。类似地，俄罗斯国防部公布的数据同样远低于第三方验证。这种多维度的数据矛盾不仅引发了对所有冲突参与方官方数据的可信度质疑，更构成了一个经典的统计推断问题：在存在显著而系统性的观测偏误和选择性报告的情况下，如何客观、准确地估计并比较双方的真实装备损失率？
+
+\subsection{研究意义与核心问题}
+
+开源情报（OSINT）平台 Oryx 的出现为上述问题提供了新的解决路径。该平台通过全球志愿者逐件核对公开影像资料（照片/视频），记录每件损毁装备的类型、型号、日期、位置和损毁状态，并将来源链接公开发布。虽然这些“影像验证”数据仍存在因作战地域和装备类型而异的“被观测概率”偏误，但它们提供了一个独立于交战双方官方宣传的、相对客观且可审计的基准——尤其重要的是，Oryx 同时记录了俄方和乌方双方的损失，使得“公平比较”从方法论上成为可能。
+
+本文围绕三个核心统计问题展开：
+
+\begin{enumerate}
+  \item \textbf{估计问题}：如何用点估计和区间估计方法，给出准确的双方装备损失率（日均 $\lambda$）及其不确定性量化？
+  \item \textbf{比较问题}：双方损失率是否存在统计显著差异？这一差异在不同战争阶段、装备类型上呈现出何种异质性？
+  \item \textbf{报告偏差问题}：官方声称数据与独立影像验证数据之间的偏差有多大？
+\end{enumerate}
+
+\subsection{文献回顾与本文贡献}
+
+在冲突数据统计分析方面，Zammit-Mangion 等（2012, \textit{PNAS}）首次将点过程模型应用于阿富汗战争日记数据的分析；arXiv:2509.07813 采用 SARIMA、ETS 和 LSTM 等多模型对比方法预测俄罗斯装备损失趋势；arXiv:2408.14940 则从贝叶斯时空 Hawkes 过程的视角对冲突事件的传染效应进行建模。国内方面，中科院地理资源所利用 AIS 大数据分析了俄乌冲突对全球原油海洋运输的影响（2025）。
+
+本文区别于上述研究的主要贡献在于：（1）首次系统性地将 Poisson 置信区间三方法比较、Block Bootstrap BCa 校正和两独立 Poisson E-test 应用于俄乌双方装备损失率的直接双边统计比较；（2）通过 Monte Carlo 模拟对各 CI 方法的覆盖率进行了系统评估；（3）揭示了双方损失比率从 $>3$ 到 $<1$ 的时序逆转现象及其装备类型异质性；（4）定量刻画了官方声称数据与独立验证数据之间 3–29 倍的报告偏差。
+
+% ========== 第2节：数据 ==========
+\section{数据描述}
+
+\subsection{数据来源}
+
+本文使用三个互补的数据来源（表 \ref{tab:sources}）：
+
+\begin{table}[H]
+\centering
+\caption{数据来源概览}
+\label{tab:sources}
+\begin{tabular}{p{2.8cm}p{2.5cm}p{4cm}p{2.5cm}p{2cm}}
+\toprule
+来源 & 类型 & 内容 & 时间跨度 & 规模 \\
+\midrule
+Oryx 双方数据 & 影像验证，双边 & 俄乌双方每日累计损失（含装备类型、损毁状态细分）& 2022.2.25–2026.6.4 & 1,559 天 \\
+WarSpotting & 影像验证，单边 & 俄方装备损失逐条记录（含位置坐标、具体型号）& 2022.2.24–2026.6.3 & 22,970 条 \\
+乌克兰总参 & 官方声称 & 俄军装备损失每日累计 & 2022.2.25–2026.5.31 & 1,557 天 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{双方 Oryx 数据概览}
+
+截至 2026 年 6 月 4 日，Oryx 平台共验证俄方装备损失 23,556 件、乌方 11,397 件，比率为 2.07:1。双方损失的时间跨度为 1,559 天。
+
+\textbf{损毁状态分布}（表 \ref{tab:status}）：
+
+\begin{table}[H]
+\centering
+\caption{双方损毁状态分布}
+\label{tab:status}
+\begin{tabular}{lrrrr}
+\toprule
+状态 & 俄方（件） & 乌方（件） & 俄方占比 & 乌方占比 \\
+\midrule
+Destroyed（摧毁） & 19,625 & 9,627 & 78.8\% & 77.8\% \\
+Captured（被俘获） & 3,520 & 1,540 & 12.0\% & 10.4\% \\
+Abandoned（遗弃） & 1,542 & 797 & 5.1\% & 5.9\% \\
+Damaged（损坏） & 1,033 & 715 & 4.2\% & 5.9\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+俄方被缴获装备占比（12.0\%）高于乌方（10.4\%），这与俄军 2022 年基辅撤退、2022 年 9 月哈尔科夫反攻溃败、2022 年 11 月赫尔松撤退中大规模遗弃装备的历史事实一致。
+
+\textbf{装备类型分布}（表 \ref{tab:category}，按双方损失比率从高到低排列）：
+
+\begin{table}[H]
+\centering
+\caption{双方按装备类型的损失比较}
+\label{tab:category}
+\begin{tabular}{lrrr}
+\toprule
+装备类型 & 俄方（件） & 乌方（件） & 比率（RU/UA） \\
+\midrule
+装甲车（AFV） & 2,682 & 597 & 4.49 \\
+步战车（IFV） & 6,702 & 1,641 & 4.08 \\
+车辆（Vehicles） & 4,949 & 1,456 & 3.40 \\
+坦克（Tanks） & 4,729 & 1,504 & 3.14 \\
+后勤车辆 & 1,094 & 391 & 2.80 \\
+工程车辆 & 759 & 299 & 2.54 \\
+飞机 & 529 & 281 & 1.88 \\
+防空系统 & 603 & 394 & 1.53 \\
+火炮 & 1,762 & 1,202 & 1.47 \\
+\textbf{装甲运兵车（APC）} & \textbf{804} & \textbf{1,425} & \textbf{0.56} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+俄方在几乎所有装备类别上损失更多——特别是进攻作战的”矛头”装备（AFV 4.49x、IFV 4.08x、坦克 3.14x）。乌方仅在 APC（装甲运兵车）上损失超过俄方，可能反映了 APC 在防御态势下更多地作为前沿运输工具暴露于敌方火力。
+
+\begin{figure}[H]
+\centering
+\begin{subfigure}{0.48\textwidth}
+  \centering
+  \includegraphics[width=\textwidth]{09_status_and_type.png}
+  \caption{损毁状态与装备类型概览}
+\end{subfigure}
+\hfill
+\begin{subfigure}{0.48\textwidth}
+  \centering
+  \includegraphics[width=\textwidth]{13_both_sides_status_pie.png}
+  \caption{双方损毁状态对比}
+\end{subfigure}
+\caption{双方装备损失总体概览}
+\label{fig:overview}
+\end{figure}
+
+\subsection{观测偏误的分析框架}
+
+需明确的是，Oryx 数据记录的是经公开影像独立核实的子集——有影像证据的损失——而非真实损失总数。存在以下系统性观测偏误：
+
+\begin{itemize}
+  \item \textbf{空间偏误}：乌克兰控制区、交通便利区域的损失更容易被拍摄。这意味着俄方在乌控区内的损失被系统性高观测，而乌方在俄占区内的损失则被系统性低观测。这一非对称性意味着真实的损失比率可能低于观测到的 2.07:1。
+  \item \textbf{装备偏误}：大型装备（坦克、火炮）比小型装备（无人机）更容易被观测到。
+  \item \textbf{状态偏误}：完全摧毁的装备比轻微损坏的装备更容易被识别和确认。
+  \item \textbf{时间偏误}：社交媒体活跃度、前线稳定程度和志愿者关注度随时间变化。
+\end{itemize}
+
+% ========== 第3节：方法 ==========
+\section{统计方法}
+
+\subsection{模型设定与 MLE 点估计}
+
+设第 $t$ 天的装备损失数为 $Y_t$，假设 $Y_t \sim \text{Poisson}(\lambda)$，其中 $\lambda$ 表示日均损失率。
+
+对独立同分布样本 $Y_1, \ldots, Y_n$，似然函数为：
+\begin{equation}
+L(\lambda) = \prod_{t=1}^{n} \frac{e^{-\lambda} \lambda^{Y_t}}{Y_t!}
+\end{equation}
+
+对数似然函数：
+\begin{equation}
+\ell(\lambda) = -n\lambda + \left(\sum_{t=1}^{n} Y_t\right) \log \lambda - \sum_{t=1}^{n} \log(Y_t!)
+\end{equation}
+
+令一阶导数为零解得 MLE：
+\begin{equation}
+\hat{\lambda}_{\text{MLE}} = \frac{1}{n}\sum_{t=1}^{n} Y_t = \bar{Y}
+\end{equation}
+
+Fisher 信息量为 $I(\lambda) = n/\lambda$，渐近方差为 $\widehat{\text{Var}}(\hat{\lambda}) = \hat{\lambda}/n$。
+
+对于双方率比 $\rho = \lambda_{RU}/\lambda_{UA}$，MLE 为 $\hat{\rho} = \hat{\lambda}_{RU}/\hat{\lambda}_{UA}$，其标准误通过 Delta 方法估计：
+\begin{equation}
+\text{SE}(\hat{\rho}) = \hat{\rho} \cdot \sqrt{\frac{1}{\hat{\lambda}_{RU} \cdot n} + \frac{1}{\hat{\lambda}_{UA} \cdot n}}
+\end{equation}
+
+\subsection{Poisson 置信区间}
+
+\subsubsection{Wald 置信区间}
+
+基于 MLE 的渐近正态性：
+\begin{equation}
+\hat{\lambda} \pm z_{\alpha/2} \sqrt{\hat{\lambda}/n}
+\end{equation}
+
+优点为计算简单；缺点为在小样本或小 $\lambda$ 时覆盖率可能严重不足。
+
+\subsubsection{Score 置信区间（Wilson-type）}
+
+基于得分统计量 $S(\lambda) = (\hat{\lambda} - \lambda) / \sqrt{\lambda/n}$，解方程得到：
+\begin{equation}
+\lambda = \hat{\lambda} + \frac{z^2}{2n} \pm z\sqrt{\frac{\hat{\lambda}}{n} + \frac{z^2}{4n^2}}
+\end{equation}
+
+Score CI 避免了用 $\hat{\lambda}$ 本身估计方差的问题，比 Wald CI 更稳健。
+
+\subsubsection{Exact（Garwood）置信区间}
+
+利用 Poisson 总计数与 $\chi^2$ 分布的精确关系（Garwood, 1936）：
+\begin{equation}
+\lambda_L = \frac{1}{2n} \chi^2_{2Y, \alpha/2} \;(Y > 0), \quad \lambda_U = \frac{1}{2n} \chi^2_{2(Y+1), 1-\alpha/2}
+\end{equation}
+
+Exact CI 保证实际覆盖率不低于名义水平（95\%）。
+
+\subsection{Block Bootstrap 与 BCa 方法}
+
+装备损失时间序列存在显著自相关（lag-1 ACF = 0.589），IID Bootstrap 假设观测独立，会严重低估标准误。Moving Block Bootstrap（MBB）通过保持块内的时间结构来解决这一问题。设块长度为 $b$，本文将数据分为 $n-b+1$ 个长度为 $b$ 的重叠块，有放回地抽取 $k = \lceil n/b \rceil$ 个块构建 Bootstrap 样本。
+
+块长度 $b$ 通过自相关函数（ACF）衰减法确定：找到 $|\text{ACF}(\text{lag})| < 2/\sqrt{n}$ 的第一个滞后阶数。对于 $n=1,561$ 的日损失数据，$b=11$。
+
+BCa（Bias-Corrected and Accelerated）置信区间校正偏差和偏度：
+\begin{equation}
+\alpha_1 = \Phi\left(\hat{z}_0 + \frac{\hat{z}_0 + z_{\alpha/2}}{1 - \hat{a}(\hat{z}_0 + z_{\alpha/2})}\right),\quad
+\alpha_2 = \Phi\left(\hat{z}_0 + \frac{\hat{z}_0 + z_{1-\alpha/2}}{1 - \hat{a}(\hat{z}_0 + z_{1-\alpha/2})}\right)
+\end{equation}
+
+其中 $\hat{z}_0 = \Phi^{-1}(\#\{\hat{\theta}^*_b < \hat{\theta}\} / B)$ 为偏差校正因子，$\hat{a}$ 为通过 Jackknife 估计的加速常数。
+
+\subsection{两独立 Poisson 条件检验}
+
+设两组独立样本 $Y_{1i} \stackrel{\text{iid}}{\sim} \text{Poisson}(\lambda_1)$ 和 $Y_{2j} \stackrel{\text{iid}}{\sim} \text{Poisson}(\lambda_2)$。检验：
+\begin{equation}
+H_0: \lambda_1 = \lambda_2 \quad \text{vs.} \quad H_1: \lambda_1 \neq \lambda_2
+\end{equation}
+
+给定总计数 $S = \sum_i Y_{1i} + \sum_j Y_{2j}$，在 $H_0$ 下有精确条件分布：
+\begin{equation}
+Y_1 = \sum_i Y_{1i} \mid S \sim \text{Binomial}\left(S, \frac{n_1}{n_1 + n_2}\right)
+\end{equation}
+
+基于此条件分布可直接计算双侧精确 $p$ 值（E-test, Krishnamoorthy \& Thomson, 2004）。多重比较时采用 Bonferroni 校正。
+
+% ========== 第4节：结果 ==========
+\section{实证结果与分析}
+
+\subsection{双方总体 MLE 点估计与率比推断}
+
+基于 Oryx 双方数据（$n = 1,559$ 天），总体 MLE 结果如表 \ref{tab:mle} 所示：
+
+\begin{table}[H]
+\centering
+\caption{双方总体 MLE 估计}
+\label{tab:mle}
+\begin{tabular}{lrr}
+\toprule
+参数 & 俄方（RU） & 乌方（UA） \\
+\midrule
+日均损失率 $\hat{\lambda}$ & 16.191 件/天 & 8.002 件/天 \\
+标准误 SE & 0.102 & 0.072 \\
+95\% Exact CI & [15.992, 16.392] & [7.863, 8.144] \\
+累计验证损失 & 23,556 件 & 11,397 件 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+双方率比 $\hat{\rho} = 2.023$（$\text{SE} = 0.022$），95\% Wald CI 为 [1.98, 2.07]，E-test $p < 0.0001$。\textbf{结论：双方损失率存在极显著的统计差异，俄方日均验证损失约为乌方的 2 倍。}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.95\textwidth]{10_both_sides_timeseries.png}
+\caption{双方装备损失时序对比：（上）每日损失 30 天移动平均；（中）累计验证损失；（下）月度损失比率 RU/UA（$>1$ 表示俄方损失更多）}
+\label{fig:timeseries}
+\end{figure}
+
+\subsection{双方月度损失率的时序逆转}
+
+双方月度损失比率（RU/UA）呈现出显著的时序结构变化：
+
+\begin{itemize}
+  \item \textbf{2022 年 2–8 月（初期阶段至顿巴斯攻势）}：月均比率约 3.66，俄方损失约为乌方的 3–4 倍
+  \item \textbf{2022 年 9–12 月（乌军秋季反攻）}：比率降至约 1.5–2.0
+  \item \textbf{2025–2026 年（近期）}：比率降至 0.65，乌方损失超过俄方
+\end{itemize}
+
+这一“从 $>3$ 到 $<1$”的逆转与战争性质的转变（从俄军大规模进攻到双方消耗战再到乌克兰承受更大压力）高度吻合。
+
+\subsection{双方按装备类型的分层比较}
+
+对所有装备类型双方损失率进行独立 E-test，结果如表 \ref{tab:eq_test} 所示。在 Bonferroni 校正后（$\alpha_B = 0.005$），所有 10 类装备类型的双方差异仍高度显著。
+
+\begin{table}[H]
+\centering
+\caption{双方装备类型统计检验}
+\label{tab:eq_test}
+\begin{tabular}{lrrrl}
+\toprule
+装备类型 & $\hat{\lambda}_{RU}$ & $\hat{\lambda}_{UA}$ & 率比 & 显著（Bonf.） \\
+\midrule
+AFV & 1.720 & 0.383 & 4.49 & *** \\
+IFV & 4.298 & 1.052 & 4.08 & *** \\
+Vehicles & 3.174 & 0.934 & 3.40 & *** \\
+Tanks & 3.033 & 0.965 & 3.14 & *** \\
+Logistics & 0.702 & 0.251 & 2.80 & *** \\
+Engineering & 0.487 & 0.192 & 2.54 & *** \\
+Aircraft & 0.339 & 0.180 & 1.88 & *** \\
+Antiair & 0.387 & 0.253 & 1.53 & *** \\
+Artillery & 1.130 & 0.771 & 1.47 & *** \\
+\textbf{APC} & \textbf{0.516} & \textbf{0.914} & \textbf{0.56} & *** \\
+\bottomrule
+\multicolumn{5}{l}{\small 注：*** 表示 $p < 0.001$（Bonferroni 校正后）} \\
+\end{tabular}
+\end{table}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.9\textwidth]{12_equipment_type_comparison.png}
+\caption{双方装备类型损失对比：（左）绝对损失数量；（右）损失比率 RU/UA（$>1$ 表示俄方损失更多，红柱），唯一乌方超出的 APC 以蓝柱标示}
+\label{fig:equipment}
+\end{figure}
+
+\subsection{置信区间方法比较与 Monte Carlo 覆盖率}
+
+本文设计了 Monte Carlo 模拟实验（$N_{\text{sim}} = 10,000$，固定 $n = 30$ 天）评估三种 CI 方法的实际覆盖率，结果如表 \ref{tab:coverage} 所示。
+
+\begin{table}[H]
+\centering
+\caption{三种 CI 方法的 Monte Carlo 覆盖率（名义水平 95\%）}
+\label{tab:coverage}
+\begin{tabular}{rrrr}
+\toprule
+$\lambda$ 真值 & Wald & Score & Exact \\
+\midrule
+0.5 & \textbf{0.919} & 0.951 & 0.966 \\
+1.0 & 0.929 & 0.946 & 0.957 \\
+2.0 & 0.948 & 0.954 & 0.961 \\
+5.0 & 0.955 & 0.956 & 0.956 \\
+10.0 & 0.950 & 0.947 & 0.950 \\
+15.0 & 0.949 & 0.949 & 0.953 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{结论}：Wald CI 在 $\lambda \leq 2$ 时覆盖率不足（最低 91.9\%），Exact CI 始终保底（覆盖率 $\geq$ 95\%）。
+
+\begin{figure}[H]
+\centering
+\begin{subfigure}{0.48\textwidth}
+  \centering
+  \includegraphics[width=\textwidth]{03_ci_forest_plot.png}
+  \caption{Wald / Score / Exact 三种 CI 对比}
+\end{subfigure}
+\hfill
+\begin{subfigure}{0.48\textwidth}
+  \centering
+  \includegraphics[width=\textwidth]{07_ci_width_comparison.png}
+  \caption{三种方法 CI 宽度比较}
+\end{subfigure}
+\caption{Poisson 置信区间方法比较}
+\label{fig:ci_comparison}
+\end{figure}
+
+\subsection{Block Bootstrap 的 IID vs Block 比较}
+
+对俄方总体日损失数据进行 Bootstrap 分析，结果见表 \ref{tab:bootstrap}。
+
+\begin{table}[H]
+\centering
+\caption{Bootstrap 方法比较}
+\label{tab:bootstrap}
+\begin{tabular}{lrl}
+\toprule
+方法 & 块长度 & Bootstrap SE \\
+\midrule
+IID Bootstrap & $b = 1$（等价）& 0.42 \\
+Block Bootstrap & $b = 11$（最优）& \textbf{0.99} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{核心发现}：Block Bootstrap SE（0.99）约为 IID Bootstrap SE（0.42）的 2.4 倍——忽略时间自相关将使不确定性的估计不足 58\%。BCa 95\% CI 为 [13.18, 17.29]。
+
+\textbf{周度 Bootstrap 交叉验证}：基于周度聚合的 Block Bootstrap（$B = 10,000$）得到 SE = 0.82，BCa 95\% CI = [13.31, 16.61]，与日度结果一致地指向 SE 是 IID 的 2.0–2.4 倍。
+
+\begin{figure}[H]
+\centering
+\begin{subfigure}{0.48\textwidth}
+  \centering
+  \includegraphics[width=\textwidth]{04_bootstrap_distribution.png}
+  \caption{日度 Block Bootstrap（$b=11$, $B=2000$）}
+\end{subfigure}
+\hfill
+\begin{subfigure}{0.48\textwidth}
+  \centering
+  \includegraphics[width=\textwidth]{16_weekly_bootstrap.png}
+  \caption{周度 Block Bootstrap（$B=10,000$）}
+\end{subfigure}
+\caption{IID Bootstrap vs Block Bootstrap 分布对比。Block Bootstrap SE（0.99 日度 / 0.82 周度）均为 IID（0.42）的 2.0–2.4 倍}
+\label{fig:bootstrap}
+\end{figure}
+
+\subsection{声称 vs 验证：报告偏差的量化}
+
+将乌克兰官方声称的俄军损失与 Oryx 影像验证数据进行直接比较（表 \ref{tab:claims}）：
+
+\begin{table}[H]
+\centering
+\caption{官方声称 vs 影像验证}
+\label{tab:claims}
+\begin{tabular}{lrrrl}
+\toprule
+装备 & 验证 $\hat{\lambda}$（件/天） & 声称 $\hat{\lambda}$（件/天） & 声称/验证比 & E-test $p$ \\
+\midrule
+坦克 & 2.57 & 7.68 & 2.98 & $< 0.0001$ \\
+装甲车辆 & 5.60 & 15.85 & 2.83 & $< 0.0001$ \\
+火炮 & 0.94 & 27.62 & \textbf{29.44} & $< 0.0001$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+火炮声称/验证比高达 29 倍，可能原因包括火炮部署在后方（10–30 km）、影像获取难度大，以及乌方可能将”压制”统计为”摧毁”。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.75\textwidth]{08_claims_vs_verified.png}
+\caption{每月俄军坦克损失：WarSpotting 影像验证 vs 乌克兰官方声称。声称数据系统性地高于验证数据}
+\label{fig:claims}
+\end{figure}
+
+\subsection{观测概率灵敏度分析}
+
+为定量评估观测偏误对率比估计的影响，本文构建了观测概率灵敏度网格：对 $p_{RU}, p_{UA} \in \{0.4, 0.5, \ldots, 1.0\}$ 计算修正率比。
+
+\textbf{主要发现}：（1）若 $p_{RU} = p_{UA}$，率比保持 2.06 不变——等观测概率下率比是无偏估计；（2）在 $p_{RU}=0.8, p_{UA}=0.4$ 假设下修正率比降至 1.03（几乎相等）；（3）仅极端组合（$p_{RU} \geq 0.9, p_{UA} \leq 0.4$）导致率比逆转。结论：观测到的 2.06:1 在中等非对称观测下具有稳健性，真实率比可能在 1.0–2.0 之间。
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.85\textwidth]{15_sensitivity_heatmap.png}
+\caption{观测概率灵敏度分析：（左）修正率比热力图，对角线（$p_{RU}=p_{UA}$）率比恒为 2.06；（右）率比逆转边界，虚线下方表示修正后乌方损失超过俄方}
+\label{fig:sensitivity}
+\end{figure}
+
+\subsection{装备损失的空间分布}
+
+利用 WarSpotting 数据中 14,066 条（61.2\%）含经纬度坐标的记录进行空间分析：
+
+\begin{itemize}
+  \item \textbf{宏区域}：East（卢甘斯克-顿涅茨克）占 44.3\%（10,185 件），North（哈尔科夫-基辅）占 9.9\%，South（赫尔松-扎波罗热）占 6.6\%
+  \item \textbf{网格热点}：最热网格 (48\textdegree N, 37\textdegree E)（Pokrovsk 方向）集中了 21.5\% 的损失
+  \item \textbf{时间动态}：战区重心从 2022 Q1 的北部（基辅-哈尔科夫）转移到 2023–2025 年的东部（顿巴斯）
+\end{itemize}
+
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.9\textwidth]{14_spatial_distribution.png}
+\caption{俄方装备损失的空间分布（WarSpotting 数据）：（左）按宏区域的损失分布（East 占 44.3\%）；（右）Top 10 损失最多的定居点区域}
+\label{fig:spatial}
+\end{figure}
+
+% ========== 第5节：讨论 ==========
+% ========== 补充图表：阶段分析与模型诊断 ==========
+\begin{figure}[H]
+\centering
+\begin{subfigure}{0.48\textwidth}
+  \centering
+  \includegraphics[width=\textwidth]{02_phase_boxplot.png}
+  \caption{9 个战争阶段的每日损失分布与均值 $\pm 1.96$SE}
+\end{subfigure}
+\hfill
+\begin{subfigure}{0.48\textwidth}
+  \centering
+  \includegraphics[width=\textwidth]{06_poisson_qqplot.png}
+  \caption{4 个关键阶段的 Poisson 拟合 Q-Q 诊断图}
+\end{subfigure}
+\caption{战争阶段分析与模型诊断}
+\label{fig:phase_diag}
+\end{figure}
+
+\section{讨论}
+
+\subsection{方法论启示}
+
+\begin{enumerate}
+  \item \textbf{CI 方法选择}：对于小样本或稀有事件，必须使用 Exact CI（Garwood）确保覆盖率不低于 95\%。Wald CI 仅在大样本、大 $\lambda$ 下可靠
+  \item \textbf{时间依赖性的不可忽略性}：冲突数据的强自相关性（lag-1 ACF = 0.589）导致 IID Bootstrap 低估不确定性约 2.4 倍——任何忽略时序依赖的 SE 估计都将严重不准
+  \item \textbf{双边比较中 E-test 的优势}：基于条件二项分布的精确 $p$ 值免于大样本渐近假设
+  \item \textbf{多重比较的必要性}：Bonferroni 校正有效控制了整体 Type I 错误率
+\end{enumerate}
+
+\subsection{局限性}
+
+\begin{enumerate}
+  \item Oryx 的观测偏误难以精确量化：乌方损失在俄占区更难被拍摄验证，真实 RU/UA 比率可能低于 2.07:1
+  \item Poisson 模型假设等离散和恒定 $\lambda$，但实际数据可能存在过离散
+  \item 未纳入战线移动速度、战斗强度指标等外部协变量
+\end{enumerate}
+
+\subsection{未来方向}
+
+采用负二项回归处理过离散问题；引入 Hawkes 自激过程建模时序变化；贝叶斯层次模型融合多来源数据并对各来源的偏误因子进行显式建模。
+
+% ========== 第6节：结论 ==========
+\section{结论}
+
+本文以俄乌冲突双方 Oryx 影像验证装备损失数据为研究对象，系统地应用了 Poisson 分布下 MLE 点估计、三种置信区间构造、Block Bootstrap BCa 校正、两独立 Poisson E-test、观测概率灵敏度分析和空间统计分析。主要结论如下：
+
+\begin{enumerate}
+  \item \textbf{双方损失率存在极显著的统计差异}（E-test $p < 0.0001$）：俄方日均影像验证损失 16.19 件/天（95\% Exact CI: [15.99, 16.39]），乌方 8.00 件/天（CI: [7.86, 8.14]），率比 2.02:1（CI: [1.98, 2.07]）
+  \item \textbf{观测概率灵敏度分析}表明 2.06:1 的率比在中等非对称观测下具有稳健性，真实率比可能在 1.0–2.0 之间
+  \item \textbf{双方损失比率呈现“从 $>3$ 到 $<1$”的时序逆转}：2022 年初月均比率 3.66（俄方多损），2025–2026 年降至 0.65（乌方反超）
+  \item \textbf{装备类型差异极显著且有战术含义}：俄方在进攻型装备上损失远超乌方，乌方仅在 APC、MRAP 等防御/运输装备上反超
+  \item \textbf{空间分析}揭示顿涅茨克州集中了 44\% 的俄方损失，战区重心从北向南-东转移
+  \item \textbf{Exact CI 在小 $\lambda$ 下是唯一可靠的选择}（$\lambda=0.5$ 时覆盖率 96.6\% vs Wald 91.9\%）
+  \item \textbf{时间依赖性的严重性通过两种 Bootstrap 方法交叉验证}：日度 SE（0.99）和周度 SE（0.82）均为 IID（0.42）的 2.0–2.4 倍
+  \item \textbf{官方声称与 Oryx 验证之间存在系统性 3–29 倍偏差}，火炮的极端差异（29x）最为突出
+\end{enumerate}
+
+% ========== 参考文献 ==========
+\begin{thebibliography}{99}
+
+\bibitem{zammit2012}
+Zammit-Mangion, A., Dewar, M., Kadirkamanathan, V., \& Sanguinetti, G. (2012).
+Point process modelling of the Afghan War Diary.
+\textit{Proceedings of the National Academy of Sciences}, 109(31), 12414–12419.
+
+\bibitem{arxiv2509}
+arXiv:2509.07813.
+Forecasting Russian Equipment Losses in the Ukraine War: A Multi-Model Comparison.
+
+\bibitem{arxiv2408}
+arXiv:2408.14940.
+Bayesian Spatio-temporal Hawkes Process Modeling of Armed Conflict Events.
+
+\bibitem{garwood1936}
+Garwood, F. (1936).
+Fiducial limits for the Poisson distribution.
+\textit{Biometrika}, 28(3/4), 437–442.
+
+\bibitem{krishnamoorthy2004}
+Krishnamoorthy, K., \& Thomson, J. (2004).
+A more powerful test for comparing two Poisson means.
+\textit{Journal of Statistical Planning and Inference}, 119(1), 23–35.
+
+\bibitem{efron1993}
+Efron, B., \& Tibshirani, R. J. (1993).
+\textit{An Introduction to the Bootstrap}. Chapman \& Hall/CRC.
+
+\bibitem{davison1997}
+Davison, A. C., \& Hinkley, D. V. (1997).
+\textit{Bootstrap Methods and their Application}. Cambridge University Press.
+
+\bibitem{oryx}
+Oryx. (2022–2026).
+Attack on Europe: Documenting Russian and Ukrainian Equipment Losses.
+\url{https://www.oryxspioenkop.com}
+
+\bibitem{leedrake5}
+leedrake5. (2022–2026).
+Russia-Ukraine Equipment Loss Tracking (Oryx Scraper).
+\url{https://github.com/leedrake5/Russia-Ukraine}
+
+\bibitem{warspotting}
+WarSpotting.
+Automated visual identification of military equipment losses.
+\url{https://warspotting.net}
+
+\end{thebibliography}
+
+\vspace{20pt}
+
+\begin{flushright}
+\textit{本文为《数理统计》课程大作业（选题 T1）。\\
+所有数据来源于公开渠道，代码可在项目仓库中获取。}
+\end{flushright}
+
+\end{document}
