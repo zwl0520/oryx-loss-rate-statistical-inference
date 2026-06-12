@@ -58,6 +58,12 @@ def md_to_html(content):
             i += 1
             continue
 
+        # 允许论文图题使用受控的居中 HTML，不转义为文本
+        if line.strip().startswith('<p align="center"><strong>图') and line.strip().endswith('</p>'):
+            html_lines.append(line.strip())
+            i += 1
+            continue
+
         # 表格 (需要收集所有行)
         if '|' in line and line.strip().startswith('|'):
             if not in_table:
