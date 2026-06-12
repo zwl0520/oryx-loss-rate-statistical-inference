@@ -58,10 +58,26 @@ def md_to_html(content):
             i += 1
             continue
 
-        # 允许论文图题使用受控的居中 HTML，不转义为文本
-        if line.strip().startswith('<p align="center"><strong>图') and line.strip().endswith('</p>'):
-            html_lines.append(line.strip())
+        # 允许论文图题使用受控 HTML，不转义为文本
+        stripped = line.strip()
+        if stripped.startswith('<p align="center"><strong>图') and stripped.endswith('</p>'):
+            html_lines.append(stripped)
             i += 1
+            continue
+
+        # 显示公式块：Markdown 中使用单独的 $$ 起止行，HTML 中交给 MathJax 渲染
+        if stripped == '$$':
+            math_lines = ['$$']
+            i += 1
+            while i < len(lines):
+                math_lines.append(lines[i].strip())
+                if lines[i].strip() == '$$':
+                    i += 1
+                    break
+                i += 1
+            html_lines.append('<div class="math-block">')
+            html_lines.extend(math_lines)
+            html_lines.append('</div>')
             continue
 
         # 表格 (需要收集所有行)
@@ -311,6 +327,14 @@ MathJax = {{
   }}
   hr {{ border: none; border-top: 1px solid #ddd; margin: 32px 0; }}
   p {{ text-align: justify; }}
+  p[align="center"] {{ text-align: center; text-indent: 0; }}
+  .math-block {{ text-align: center; margin: 1em 0; }}
+  p:has(> mjx-container[display="true"]) {{ text-align: center; text-indent: 0; }}
+  mjx-container[display="true"] {{
+    display: block;
+    text-align: center !important;
+    margin: 1em 0;
+  }}
   strong {{ color: #1B2A4A; }}
   ul, ol {{ margin: 12px 0; padding-left: 28px; }}
   li {{ margin: 4px 0; }}
