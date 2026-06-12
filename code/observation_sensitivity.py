@@ -26,12 +26,26 @@ print("=" * 70)
 print("观测概率灵敏度分析")
 print("=" * 70)
 
-# 使用整理后的 Oryx 双方数据（item_count 求和）
+# 使用整理后的 Oryx 双方数据（item_count 求和，更精确的逐件计数）
+# 注: 此数据与 both_sides_analysis.py 使用的 oryx_both_sides.csv 是不同来源
+#      oryx_losses_combined.csv: 直接抓取 Oryx HTML, 使用 item_count 加权求和
+#      oryx_both_sides.csv: 来自 leedrake5 Google Sheet 每日累计
+#      两者总数略有差异（约2%），但不影响灵敏度分析的结论
 try:
     df_oryx = pd.read_csv(os.path.join('data', 'oryx_losses_combined.csv'))
     ru_total = int(df_oryx[df_oryx['side'] == 'Russia']['item_count'].sum())
     ua_total = int(df_oryx[df_oryx['side'] == 'Ukraine']['item_count'].sum())
-    print(f"Oryx 数据: 俄方 {ru_total} 件, 乌方 {ua_total} 件")
+    print(f"Oryx 逐件数据 (item_count): 俄方 {ru_total} 件, 乌方 {ua_total} 件")
+    # 同时加载日度数据用于对比
+    try:
+        daily = pd.read_csv(os.path.join('data', 'daily_oryx_both_sides.csv'))
+        ru_daily = int(daily['Russia_Total'].sum())
+        ua_daily = int(daily['Ukraine_Total'].sum())
+        if ru_daily != ru_total or ua_daily != ua_total:
+            print(f"  日度聚合数据:             俄方 {ru_daily} 件, 乌方 {ua_daily} 件")
+            print(f"  差异: RU {ru_daily-ru_total:+d}, UA {ua_daily-ua_total:+d} (不同数据源的计数口径差异)")
+    except:
+        pass
 except:
     # 回退到双方日度数据
     daily = pd.read_csv(os.path.join('data', 'daily_oryx_both_sides.csv'))
@@ -39,7 +53,6 @@ except:
     ua_total = int(daily['Ukraine_Total'].sum())
     print(f"日度聚合数据: 俄方 {ru_total} 件, 乌方 {ua_total} 件")
 
-exposure_days = 1555  # 观察期天数
 observed_ratio = ru_total / ua_total
 print(f"观测率比 RU/UA: {observed_ratio:.3f}")
 

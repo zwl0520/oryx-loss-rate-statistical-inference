@@ -11,6 +11,7 @@ MLE 点估计模块
 import pandas as pd
 import numpy as np
 from scipy import stats
+from scipy.special import gammaln
 import os
 import sys
 
@@ -51,7 +52,9 @@ def poisson_mle(data):
         'se': se,
         'total': np.sum(data),
         'var_lambda': lambda_hat / n,
+        # Full Poisson log-likelihood: ℓ(λ) = -nλ + Σy_i·log(λ) - Σlog(y_i!)
         'log_likelihood': -n * lambda_hat + np.sum(data) * np.log(max(lambda_hat, 1e-10))
+            - np.sum(gammaln(data + 1))
     }
 
 # ===========================

@@ -107,14 +107,13 @@ for col, name in equipment_cols.items():
     if col in df_ua.columns:
         series = df_ua[col].copy()
         # 前向填充 NaN（新类别先出现NaN，后添加历史数据）
-        series = series.fillna(method='ffill').fillna(0)
-        cumulative = series.values
-        # 日度差分（数据按日期降序排列，需反转）
-        cumulative = cumulative[::-1]  # 反转为时间升序
+        # 数据已在第81行按日期升序排列，累计值单调递增
+        series = series.ffill().fillna(0)
+        cumulative = series.values  # 升序：从最早到最新
+        # 对升序累计数据直接差分得到日度值
         daily = np.diff(cumulative, prepend=0)
-        daily = np.maximum(daily, 0)  # 修正可能的负值（数据修正）
-        # 反转为与 df_ua_daily 一致的时间顺序
-        daily = daily[::-1]
+        daily = np.maximum(daily, 0)  # 修正可能的负值（数据修正/订正）
+        # 结果保持与 df_ua_daily 一致的升序
         df_ua_daily[name] = daily.astype(int)
 
 print("\n乌克兰总参日均声称俄军损失:")

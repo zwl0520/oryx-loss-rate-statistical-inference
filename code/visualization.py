@@ -207,7 +207,7 @@ ax.axvline(x=np.percentile(boot_dist['Block_Bootstrap_Means'], 97.5), color='red
 ax.axvline(x=np.mean(boot_dist['Block_Bootstrap_Means']), color='black', linewidth=1.5, label=f'Mean={np.mean(boot_dist["Block_Bootstrap_Means"]):.3f}')
 ax.set_xlabel('Bootstrap Mean λ')
 ax.set_ylabel('Density')
-ax.set_title('Block Bootstrap Distribution (b=7, B=2000)')
+ax.set_title('Block Bootstrap Distribution (b=11, B=2000)')
 ax.legend(fontsize=9)
 
 plt.tight_layout()
@@ -272,10 +272,12 @@ for ax, (title, phase_key) in zip(axes.flatten(), [
     data = daily_ws[mask]['total_losses'].values
     lambda_hat = np.mean(data)
 
-    # Poisson QQ plot
+    # Poisson QQ plot using theoretical quantiles
     n = len(data)
-    theoretical = np.sort(stats.poisson.rvs(lambda_hat, size=n * 100)).reshape(100, n).mean(axis=0)
     empirical = np.sort(data)
+    # 使用 plotting position (i - 0.5) / n 计算理论分位数
+    prob_levels = (np.arange(1, n + 1) - 0.5) / n
+    theoretical = stats.poisson.ppf(prob_levels, lambda_hat)
     ax.scatter(theoretical, empirical, alpha=0.5, s=15, color='steelblue')
     max_val = max(theoretical.max(), empirical.max())
     ax.plot([0, max_val], [0, max_val], 'r--', linewidth=1)

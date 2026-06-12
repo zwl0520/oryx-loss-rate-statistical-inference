@@ -55,12 +55,52 @@ np.random.seed(SEED)
 theta_hat = np.sum(counts) / (7 * n_weeks)
 print(f"\nθ̂ (MLE, 周度基准) = {theta_hat:.4f} 件/天")
 
-# Block Bootstrap: 每次抽取 n_weeks 个周，计算日均率
+# ===========================
+# 周度 Block Bootstrap（Moving Block Bootstrap）
+# ===========================
+# 块长度选择：基于周度 ACF 衰减
+def choose_block_length_weekly(data, max_lag=12):
+    """周度数据的块长度选择（基于 ACF 衰减到 2/√n 以下）"""
+    n = len(data)
+    x = data - np.mean(data)
+    var = np.sum(x**2)
+    if var < 1e-10:
+        return 2
+    threshold = 2.0 / np.sqrt(n)
+    for lag in range(1, min(max_lag, n // 4)):
+        acf_val = np.sum(x[lag:] * x[:-lag]) / var
+        if abs(acf_val) < threshold:
+            return max(lag, 2)
+    return max(int(n ** (1/3)), 2)
+
+b_weekly = choose_block_length_weekly(counts)
+print(f"周度数据长度: n = {n_weeks} 周")
+print(f"周度块长度: b = {b_weekly} 周")
+
+# 显示周度 ACF
+x_w = counts - np.mean(counts)
+var_w = np.sum(x_w**2)
+acf_w = []
+for lag in range(1, min(9, n_weeks//4)):
+    acf_w.append(round(np.sum(x_w[lag:] * x_w[:-lag]) / var_w, 3))
+print(f"周度自相关 (lag 1-{len(acf_w)}): {acf_w}")
+
+# Moving Block Bootstrap on weekly data
 boot_rates = np.zeros(B)
+k_blocks = int(np.ceil(n_weeks / b_weekly))
 for b in range(B):
-    # 从 counts 中有放回抽取 n_weeks 个周
-    sampled = [counts[random.randrange(n_weeks)] for _ in range(n_weeks)]
-    boot_rates[b] = np.sum(sampled) / (7 * n_weeks)
+    # 有放回地抽取 k 个连续块
+    bs_weekly = np.zeros(n_weeks)
+    pos = 0
+    for _ in range(k_blocks):
+        start = np.random.randint(0, n_weeks - b_weekly + 1)
+        block = counts[start:start + b_weekly]
+        end = min(pos + len(block), n_weeks)
+        bs_weekly[pos:end] = block[:end - pos]
+        pos = end
+        if pos >= n_weeks:
+            break
+    boot_rates[b] = np.sum(bs_weekly) / (7 * n_weeks)
 
 boot_mean = np.mean(boot_rates)
 boot_se = np.std(boot_rates, ddof=1)
@@ -71,10 +111,21 @@ print(f"Bootstrap SE (周度块): {boot_se:.4f}")
 print(f"Percentile 95% CI: [{boot_percentile_ci[0]:.4f}, {boot_percentile_ci[1]:.4f}]")
 
 # 对比本地项目日度结果
+# 读取日度 Bootstrap 结果进行对比
+try:
+    bs_results = pd.read_csv(os.path.join('output', 'tables', 'bootstrap_results.csv'))
+    daily_se = bs_results['Bootstrap_SE'].iloc[0] if 'Bootstrap_SE' in bs_results.columns else None
+except:
+    daily_se = None
+
 print(f"\n对比:")
-print(f"  日度 Block Bootstrap SE: 0.9868 (b=11, B=2000)")
-print(f"  周度 Block Bootstrap SE: {boot_se:.4f} (B={B})")
-print(f"  日度 IID Bootstrap SE: 0.4168")
+if daily_se is not None:
+    print(f"  日度 MBB SE: {daily_se:.4f} (WarSpotting, B=2000)")
+    print(f"  周度 MBB SE: {boot_se:.4f} (WarSpotting, b={b_weekly}周, B={B})")
+    print(f"  日度 IID Bootstrap SE: 0.4168")
+    print(f"  周度 MBB / 日度 IID 比率: {boot_se/0.4168:.2f}x")
+else:
+    print(f"  周度 MBB SE: {boot_se:.4f} (WarSpotting, b={b_weekly}周, B={B})")
 
 # ===========================
 # 3. Jackknife + BCa 校正
@@ -144,11 +195,25 @@ for eq_type in major_types:
     theta_t = np.sum(type_counts) / (7 * len(type_counts))
     n_t = len(type_counts)
 
-    # Bootstrap
+    # Moving Block Bootstrap (按周抽取块)
+    b_t = max(choose_block_length_weekly(type_counts, max_lag=8), 1)
     bt = np.zeros(2000)
-    for b in range(2000):
-        sampled_t = [type_counts[random.randrange(n_t)] for _ in range(n_t)]
-        bt[b] = np.sum(sampled_t) / (7 * n_t)
+    k_t = int(np.ceil(n_t / max(b_t, 1)))
+    for b_idx in range(2000):
+        bs_weekly_t = np.zeros(n_t)
+        pos = 0
+        for _ in range(k_t):
+            if n_t - max(b_t, 1) + 1 <= 0:
+                start = 0
+            else:
+                start = np.random.randint(0, n_t - max(b_t, 1) + 1)
+            block = type_counts[start:start + max(b_t, 1)]
+            end = min(pos + len(block), n_t)
+            bs_weekly_t[pos:end] = block[:end - pos]
+            pos = end
+            if pos >= n_t:
+                break
+        bt[b_idx] = np.sum(bs_weekly_t) / (7 * n_t)
 
     type_boot_results.append({
         'equipment_type': eq_type,
@@ -216,5 +281,6 @@ print("✓ weekly_jackknife_rates.csv")
 print("✓ weekly_bootstrap_by_type.csv")
 print(f"\n周度 Block Bootstrap 分析全部完成!")
 print(f"\n核心结果对比:")
-print(f"  日度 Block Bootstrap BCa CI: [13.1827, 17.2872] (b=11, B=2000)")
-print(f"  周度 Block Bootstrap BCa CI: [{bca_low:.4f}, {bca_high:.4f}] (B={B})")
+print(f"  周度 MBB BCa CI: [{bca_low:.4f}, {bca_high:.4f}] (WarSpotting数据, b={b_weekly}周, B={B})")
+print(f"  注: 周度MBB保留了周间的时间依赖结构, 而非将各周视为独立")
+print(f"  运行 python code/bootstrap.py 获取日度 Bootstrap 结果进行对比")

@@ -196,10 +196,10 @@ min_len = min(len(ws_tank), len(daily_ua['Tanks']))
 ws_tank_aligned = ws_tank[:min_len]
 ua_tank_aligned = daily_ua['Tanks'].values[:min_len]
 
-res_claim_vs_verify = poisson_conditional_test(ws_tank_aligned, ua_tank_aligned)
+res_claim_vs_verify = poisson_conditional_test(ua_tank_aligned, ws_tank_aligned)
 print(f"坦克日均损失比较:")
-print(f"  WarSpotting验证: λ̂ = {res_claim_vs_verify['lambda1']:.3f} 辆/天")
-print(f"  乌克兰总参声称: λ̂ = {res_claim_vs_verify['lambda2']:.3f} 辆/天")
+print(f"  WarSpotting验证: λ̂ = {res_claim_vs_verify['lambda2']:.3f} 辆/天")
+print(f"  乌克兰总参声称: λ̂ = {res_claim_vs_verify['lambda1']:.3f} 辆/天")
 print(f"  声称/验证比 = {res_claim_vs_verify['rate_ratio']:.3f}")
 print(f"  E-test p-value = {res_claim_vs_verify['e_test_pval']:.10f}")
 print(f"  LRT统计量 = {res_claim_vs_verify['lrt_stat']:.2f}, p < 0.0001")
@@ -208,10 +208,10 @@ print(f"  结论: 乌克兰官方声称的俄军坦克损失显著高于影像�
 # 火炮比较
 ws_art = (daily_by_type['Self-propelled artillery'] + daily_by_type['Towed artillery']).values
 ua_art = daily_ua['Field Artillery'].values[:len(ws_art)]
-res_art = poisson_conditional_test(ws_art, ua_art)
+res_art = poisson_conditional_test(ua_art, ws_art)
 print(f"\n火炮日均损失比较:")
-print(f"  WarSpotting验证: λ̂ = {res_art['lambda1']:.3f} 门/天")
-print(f"  乌克兰总参声称: λ̂ = {res_art['lambda2']:.3f} 门/天")
+print(f"  WarSpotting验证: λ̂ = {res_art['lambda2']:.3f} 门/天")
+print(f"  乌克兰总参声称: λ̂ = {res_art['lambda1']:.3f} 门/天")
 print(f"  声称/验证比 = {res_art['rate_ratio']:.3f}")
 print(f"  E-test p-value = {res_art['e_test_pval']:.10f}")
 

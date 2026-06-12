@@ -27,7 +27,7 @@ monthly['month'] = monthly['month'].astype(str)
 # ===========================
 # 图10: 双方日均损失时序对比
 # ===========================
-print("[10/13] 双方损失时序对比...")
+print("[10/16] 双方损失时序对比...")
 fig, axes = plt.subplots(3, 1, figsize=(14, 13))
 
 # 10.1 双方日损失 30天MA
@@ -74,7 +74,7 @@ print("  ✓ 10_both_sides_timeseries.png")
 # ===========================
 # 图11: 双方 CI 对比森林图
 # ===========================
-print("[11/13] 双方 CI 森林图...")
+print("[11/16] 双方 CI 森林图...")
 fig, axes = plt.subplots(1, 2, figsize=(14, 8))
 
 categories = ['Total', 'Destroyed', 'Damaged', 'Abandoned', 'Captured',
@@ -139,7 +139,7 @@ print("  ✓ 11_both_sides_ci_forest.png")
 # ===========================
 # 图12: 双方装备类型构成对比
 # ===========================
-print("[12/13] 双方装备类型构成对比...")
+print("[12/16] 双方装备类型构成对比...")
 fig, axes = plt.subplots(1, 2, figsize=(14, 6))
 
 eq_names = ['Tanks', 'IFV', 'AFV', 'APC', 'Artillery', 'Vehicles', 'Aircraft', 'Engineering', 'Antiair', 'Logistics']
@@ -182,7 +182,7 @@ print("  ✓ 12_equipment_type_comparison.png")
 # ===========================
 # 图13: 双方损失状态构成饼图
 # ===========================
-print("[13/13] 双方损失状态对比...")
+print("[13/16] 双方损失状态对比...")
 fig, axes = plt.subplots(1, 2, figsize=(12, 5))
 
 status_labels = ['Destroyed', 'Damaged', 'Abandoned', 'Captured']

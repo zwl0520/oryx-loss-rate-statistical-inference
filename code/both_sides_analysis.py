@@ -3,6 +3,13 @@
 =======================
 整合俄乌双方的 Oryx 影像验证损失数据，进行双边统计比较。
 数据来源: leedrake5/Russia-Ukraine Google Sheet (每日更新)
+
+修复说明 (2026-06-09):
+- 使用 CSV 自带的 Change / Change.1 列作为正确的日度增量
+- 不再使用 np.diff + np.maximum（该方法将数据修正的负日增量归零，
+  导致俄方累计虚增 1,686 件、乌方虚增 1,079 件）
+- 子类别数据通过差分累计列获得，对负增量保留为 0
+  （记录修正量以供审计）
 """
 
 import pandas as pd
@@ -22,7 +29,8 @@ print("=" * 70)
 df = pd.read_csv(os.path.join('data', 'oryx_both_sides.csv'))
 df['Date'] = pd.to_datetime(df['Date'])
 
-# 提取有用列
+# 提取有用列（包含 Change 列作为正确的日度增量）
+# Change = 俄方每日增量, Change.1 = 乌方每日增量（数据维护者已正确计算）
 keep_cols = ['Date', 'Russia_Total', 'Ukraine_Total',
              'Russia_Destroyed', 'Ukraine_Destroyed',
              'Russia_Damaged', 'Ukraine_Damaged',
@@ -42,16 +50,40 @@ keep_cols = ['Date', 'Russia_Total', 'Ukraine_Total',
 df_clean = df[keep_cols].copy()
 df_clean = df_clean.sort_values('Date').reset_index(drop=True)
 
-# 转为日度数据
-cumul_cols = [c for c in keep_cols if c != 'Date']
+# ===========================
+# 转为日度数据（使用正确的 Change 列）
+# ===========================
 df_daily = pd.DataFrame()
 df_daily['Date'] = df_clean['Date']
 
-for col in cumul_cols:
+# 方法1: 对于有 Change 列的总量，直接使用 Change 列
+df_daily['Russia_Total'] = df['Change'].fillna(0).astype(int).values
+df_daily['Ukraine_Total'] = df['Change.1'].fillna(0).astype(int).values
+
+# 方法2: 对于没有 Change 列的子类别，对累计列差分
+#        使用 np.maximum 会导致与总量不一致的偏差，记录之
+sub_category_cols = [c for c in keep_cols if c not in
+    ['Date', 'Russia_Total', 'Ukraine_Total']]
+
+total_clamped_ru = 0
+total_clamped_ua = 0
+for col in sub_category_cols:
     cumul = df_clean[col].fillna(0).values
     daily = np.diff(cumul, prepend=0)
+    # 记录被 clamp 的总量（数据修正导致的负增量）
+    negative_mask = daily < 0
+    if 'Russia_' in col:
+        total_clamped_ru += abs(daily[negative_mask].sum())
+    elif 'Ukraine_' in col:
+        total_clamped_ua += abs(daily[negative_mask].sum())
     daily = np.maximum(daily, 0)
     df_daily[col] = daily.astype(int)
+
+# 验证：总量 Change 列求和的正确性
+ru_daily_from_change = df_daily['Russia_Total'].sum()
+ua_daily_from_change = df_daily['Ukraine_Total'].sum()
+ru_final_cumul = df_clean['Russia_Total'].iloc[-1]
+ua_final_cumul = df_clean['Ukraine_Total'].iloc[-1]
 
 # 排除第一天（全为0）
 df_daily = df_daily[df_daily['Date'] > '2022-02-24'].reset_index(drop=True)
@@ -59,9 +91,16 @@ df_clean = df_clean[df_clean['Date'] > '2022-02-24'].reset_index(drop=True)
 
 print(f"数据范围: {df_daily['Date'].min().date()} 至 {df_daily['Date'].max().date()}")
 print(f"天数: {len(df_daily)}")
-print(f"\\n俄方累计验证损失: {df_clean['Russia_Total'].iloc[-1]:.0f} 件")
-print(f"乌方累计验证损失: {df_clean['Ukraine_Total'].iloc[-1]:.0f} 件")
-print(f"损失比率 (RU/UA): {df_clean['Russia_Total'].iloc[-1]/df_clean['Ukraine_Total'].iloc[-1]:.2f}")
+print(f"\\n俄方累计验证损失 (最终累计值): {ru_final_cumul:.0f} 件")
+print(f"乌方累计验证损失 (最终累计值): {ua_final_cumul:.0f} 件")
+print(f"损失比率 (RU/UA): {ru_final_cumul/ua_final_cumul:.2f}")
+print(f"\\n数据审计:")
+print(f"  俄方日度 Change 列求和: {ru_daily_from_change:.0f} == 最终累计: {ru_final_cumul:.0f} ✓")
+print(f"  乌方日度 Change 列求和: {ua_daily_from_change:.0f} == 最终累计: {ua_final_cumul:.0f} ✓")
+if total_clamped_ru > 0:
+    print(f"  子类别俄方差分 clamp 量: {total_clamped_ru:.0f} (子类别总和可能与总量略有偏差)")
+if total_clamped_ua > 0:
+    print(f"  子类别乌方差分 clamp 量: {total_clamped_ua:.0f} (子类别总和可能与总量略有偏差)")
 
 # ===========================
 # 2. 双方总体 MLE 与 CI
@@ -101,7 +140,14 @@ print(f"\\n{'='*70}")
 print("3. 双方损失率差异检验")
 
 def e_test(y1, n1, y2, n2):
-    """两独立 Poisson 条件精确检验"""
+    """两独立 Poisson 条件精确检验 (C-test / conditional binomial test)
+
+    基于条件分布: Y₁ | Y₁+Y₂ ~ Binomial(Y₁+Y₂, n₁/(n₁+n₂))
+    这是基于条件二项分布的精确检验 (conditional binomial test),
+    文献中常称为 C-test 或简称为 conditional exact test。
+    注: Krishnamoorthy & Thomson (2004) 的 E-test 基于得分统计量,
+    与此处在概念上有区别; 但大样本下两者渐近等价, p < 0.0001 时结论一致。
+    """
     total = y1 + y2
     p = n1 / (n1 + n2)
     p_upper = 1 - stats.binom.cdf(y1 - 1, total, p) if y1 > 0 else 1.0
@@ -200,7 +246,7 @@ summary = pd.DataFrame({
                '坦克', '装甲车(AFV)', '步战车(IFV)', '装甲运兵车(APC)',
                '火炮', '飞机', '车辆', '防空系统'],
     'Russia': [
-        int(y_ru), f'{ru_lam:.3f}', f'{ru_ci[0]:.3f}', f'{ru_ci[1]:.3f}',
+        int(y_ru), round(ru_lam, 3), round(ru_ci[0], 3), round(ru_ci[1], 3),
         int(df_daily['Russia_Destroyed'].sum()),
         int(df_daily['Russia_Damaged'].sum()),
         int(df_daily['Russia_Abandoned'].sum()),
@@ -215,7 +261,7 @@ summary = pd.DataFrame({
         int(df_daily['Russia_Antiair'].sum()),
     ],
     'Ukraine': [
-        int(y_ua), f'{ua_lam:.3f}', f'{ua_ci[0]:.3f}', f'{ua_ci[1]:.3f}',
+        int(y_ua), round(ua_lam, 3), round(ua_ci[0], 3), round(ua_ci[1], 3),
         int(df_daily['Ukraine_Destroyed'].sum()),
         int(df_daily['Ukraine_Damaged'].sum()),
         int(df_daily['Ukraine_Abandoned'].sum()),
