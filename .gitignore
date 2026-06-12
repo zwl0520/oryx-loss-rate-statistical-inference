@@ -25,3 +25,6 @@ reference_repo/
 .DS_Store
 Thumbs.db
 .claude/
+
+# 编辑器本地配置
+.vscode/
