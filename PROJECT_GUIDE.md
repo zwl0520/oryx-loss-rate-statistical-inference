@@ -329,15 +329,19 @@ visualization_new.py    ← 依赖 spatial/weekly/sensitivity 输出
 
 **核心发现**: East（顿涅茨克）占 44.3%，最热网格 (48°N, 37°E) 独占 21.5%
 
-#### `observation_sensitivity.py` —— 观测概率灵敏度分析
+#### `observation_sensitivity.py` —— 观测概率偏误校正
 
 **核心逻辑**:
-- 网格搜索: $p_{RU}, p_{UA} \in \{0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0\}$ (49种组合)
-- 修正损失 = 观测损失 / 观测概率
-- 修正率比 = 修正俄方损失 / 修正乌方损失
+- **偏误校正公式**: $\rho_{true} = \rho_{obs} \times (p_{UA} / p_{RU})$（见 §6.7 推导）
+- 网格搜索: $p_{RU}, p_{UA} \in \{0.3, 0.4, ..., 1.0\}$ (64种组合)
+- **声称数据约束**: 利用官方声称数据给出观测概率下界（坦克 $p_{RU} \geq 0.34$）
+- **Bootstrap 偏误校正**: 从 Beta 先验中抽取 $p_{RU}, p_{UA}$，嵌入 Block Bootstrap (B=5000)
+  - $p_{RU} \sim Beta(7, 3)$, 均值 0.70
+  - $p_{UA} \sim Beta(5.5, 4.5)$, 均值 0.55
 - 寻找率比 ≤ 1 的观测概率组合（逆转边界）
+- 报告 $P(\rho_{corrected} > 1)$ 作为结论稳健性的量化指标
 
-**核心发现**: 逆转需 $p_{UA}/p_{RU} \leq 0.485$，仅极端组合导致逆转
+**核心发现**: 逆转需 $p_{UA}/p_{RU} \leq 0.485$；偏误校正后率比中位数 1.63；$P(\rho_{corrected} > 1) = 88.1\%$
 
 #### `weekly_bootstrap.py` —— 周度 Block Bootstrap 验证
 
@@ -462,11 +466,31 @@ $$\lambda_L = \frac{1}{2n}\chi^2_{2Y, \alpha/2}, \quad \lambda_U = \frac{1}{2n}\
 
 $$\text{Var}(\hat{\rho}) \approx \left(\frac{\partial\rho}{\partial\lambda_{RU}}\right)^2 \text{Var}(\hat{\lambda}_{RU}) + \left(\frac{\partial\rho}{\partial\lambda_{UA}}\right)^2 \text{Var}(\hat{\lambda}_{UA})$$
 
-$$= \frac{1}{\lambda_{UA}^2} \cdot \frac{\lambda_{RU}}{n} + \frac{\lambda_{RU}^2}{\lambda_{UA}^4} \cdot \frac{\lambda_{UA}}{n}$$
-
 $$= \rho^2 \cdot \left(\frac{1}{\lambda_{RU} \cdot n} + \frac{1}{\lambda_{UA} \cdot n}\right)$$
 
 因此: $\text{SE}(\hat{\rho}) = \hat{\rho} \cdot \sqrt{\frac{1}{\hat{\lambda}_{RU} \cdot n} + \frac{1}{\hat{\lambda}_{UA} \cdot n}}$
+
+### 6.8 观测概率偏误校正公式推导
+
+设影像验证损失 $Y_{obs}$ 与真实损失 $Y_{true}$ 满足 $Y_{obs} = p \cdot Y_{true}$，其中 $p \in (0,1]$ 为被观测概率。
+
+对于双方率比:
+$$\rho_{true} = \frac{\lambda_{RU}^{true}}{\lambda_{UA}^{true}} = \frac{\lambda_{RU}^{obs} / p_{RU}}{\lambda_{UA}^{obs} / p_{UA}} = \rho_{obs} \cdot \frac{p_{UA}}{p_{RU}}$$
+
+**关键性质**:
+- 当 $p_{RU} = p_{UA}$ 时，$\rho_{true} = \rho_{obs}$（等观测概率下率比无偏）
+- 当 $p_{UA} < p_{RU}$ 时，$\rho_{true} < \rho_{obs}$（真实率比被高估）
+- 逆转条件: $p_{UA}/p_{RU} < 1/\rho_{obs} \approx 0.485$
+
+**声称数据约束**:
+$$p_{RU} = \frac{\text{验证数}}{\text{真实数}} \geq \frac{\text{验证数}}{\text{声称数}}$$
+（假设官方声称不会低估敌方损失）
+
+**Bootstrap 偏误校正**:
+1. Block Bootstrap 重抽样双方日度数据 → 获得 $\rho_{boot}$ 分布
+2. 每次重抽样中从先验抽取 $p_{RU} \sim Beta(7,3)$, $p_{UA} \sim Beta(5.5,4.5)$
+3. 计算 $\rho_{corrected} = \rho_{boot} \times (p_{UA} / p_{RU})$
+4. 从 $\rho_{corrected}$ 分布获取校正 CI 和 $P(\rho_{corrected} > 1)$
 
 ---
 
@@ -594,14 +618,15 @@ print(f'WarSpotting日度: {len(ws)}天, Total={ws.total_losses.sum()}')
 | 2023–2024 | 1.0–2.0 | 波动 |
 | 2025–2026 | **0.65** | **乌方反超** |
 
-### 观测灵敏度
+### 观测偏误校正
 
-| 假设 ($p_{RU}, p_{UA}$) | 修正率比 |
-|------------------------|---------|
-| (0.8, 0.8) | 2.07（不变） |
-| (0.8, 0.5) | 1.29 |
-| (0.8, 0.4) | 1.03 |
-| (0.9, 0.4) | 0.92（逆转！） |
+| 场景 | 校正率比 |
+|------|---------|
+| 等概率 (p_RU=p_UA) | 2.07（不变） |
+| 合理先验 (Bootstrap, 中位数) | **1.63** |
+| 偏误校正 95% CI | [0.67, 3.44] |
+| **P(ρ_corrected > 1)** | **88.1%** |
+| 极端非对称 (0.9, 0.4) | 0.92（逆转） |
 
 ---
 
@@ -701,11 +726,15 @@ A:
 **Q10: 项目的局限性是什么？**
 
 A:
-1. 观测偏误不能精确定量（方向性讨论，非精确定量）
+1. 观测偏误的先验设定具有一定主观性（Beta 先验参数通过领域知识设定，非数据驱动）
 2. Poisson 假设的等离散性在部分阶段可能不满足（overdispersion）
 3. 未纳入外部协变量（战线移动、天气、战斗强度）
 4. Oryx 和 WarSpotting 的装备分类口径不完全一致
 5. 空间分析中 38.8% 的记录缺少坐标
+
+**Q11: 你们的偏误校正方法中，Beta 先验参数 (7,3) 和 (5.5,4.5) 是怎么选的？**
+
+A: 先验均值的设定基于两个领域知识：(1) 俄方损失多在乌控区且多为大型装备 → p_RU 偏高，取均值 0.70；(2) 乌方部分损失在俄占区 → p_UA 偏低，取均值 0.55。这是主观先验，但我们的分析不依赖精确的先验值——灵敏度网格覆盖了 p ∈ [0.3, 1.0] 的整个范围，而偏误校正 Bootstrap 框架本身可以适配任何先验。核心结论 P=88% 是先验依赖的，但即便大幅调整先验（如 p_RU 均值降至 0.5），结论方向不变。这恰恰是偏误校正框架的优势——明确了假设并量化了其对结论的影响。
 
 ### 如果你被要求现场演示代码
 

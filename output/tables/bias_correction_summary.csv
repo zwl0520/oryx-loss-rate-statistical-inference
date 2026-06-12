@@ -1,0 +1,2 @@
+observed_ratio,ru_total,ua_total,n_days,p_ru_prior_mean,p_ua_prior_mean,bootstrap_reps,bias_corrected_median,bias_corrected_ci_low,bias_corrected_ci_high,prob_rho_above_1,claims_bound_p_ru_tank
+2.0602,22980,11154,1559,0.7,0.55,5000,1.6261,0.6715,3.4424,0.8806,0.3351
