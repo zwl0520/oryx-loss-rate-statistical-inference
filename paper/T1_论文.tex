@@ -56,7 +56,7 @@
 % Scale images if necessary, so that they will not overflow the page
 % margins by default, and it is still possible to overwrite the defaults
 % using explicit options in \includegraphics[width, height, ...]{}
-\setkeys{Gin}{width=\maxwidth,height=\maxheight,keepaspectratio}
+\setkeys{Gin}{width=\maxwidth,height=0.74\textheight,keepaspectratio}
 % Set default figure placement to htbp
 \makeatletter
 \def\fps@figure{htbp}
@@ -81,7 +81,13 @@
 \setCJKmonofont[AutoFakeBold=2.5,AutoFakeSlant=0.2]{PingFang SC}
 
 \title{俄乌装备损失率的``公平比较''------从估计偏误到区间估计}
-\author{}
+\author{%
+\begin{tabular}{ccc}
+田艺涵$^*$ & 赵纬伦$^*$ & 陈青骏$^*$ \\
+北京航空航天大学 & 北京航空航天大学 & 北京航空航天大学 \\
+北京，中国 & 北京，中国 & 北京，中国
+\end{tabular}\\[0.8em]
+{\small $^*$共同第一作者}}
 \date{}
 
 \begin{document}
@@ -544,13 +550,13 @@ E-test 给出的``双方损失率差异极显著''结论。
 \begin{figure}
 \centering
 \includegraphics{../output/figures/10_both_sides_timeseries.png}
-\caption{图1: 俄乌双方 Oryx 日度与月度损失趋势}
+\caption{俄乌双方 Oryx 日度与月度损失趋势}
 \end{figure}
 
 \begin{figure}
 \centering
 \includegraphics{../output/figures/11_both_sides_ci_forest.png}
-\caption{图2: 俄乌双方日均损失率的置信区间比较}
+\caption{俄乌双方日均损失率的置信区间比较}
 \end{figure}
 
 \hypertarget{ux53ccux65b9ux6708ux5ea6ux635fux5931ux7387ux7684ux65f6ux5e8fux53d8ux5316}{%
@@ -641,13 +647,13 @@ WarSpotting
 \begin{figure}
 \centering
 \includegraphics{../output/figures/12_equipment_type_comparison.png}
-\caption{图3: 俄乌双方装备类型损失率对比}
+\caption{俄乌双方装备类型损失率对比}
 \end{figure}
 
 \begin{figure}
 \centering
 \includegraphics{../output/figures/05_equipment_composition.png}
-\caption{图4: 俄方 WarSpotting 装备类型构成}
+\caption{俄方 WarSpotting 装备类型构成}
 \end{figure}
 
 \hypertarget{ux53ccux65b9ux635fux6bc1ux72b6ux6001ux7684ux7edfux8ba1ux6bd4ux8f83}{%
@@ -679,13 +685,15 @@ WarSpotting 单边逐条数据也显示 Destroyed
 \begin{figure}
 \centering
 \includegraphics{../output/figures/13_both_sides_status_pie.png}
-\caption{图5: 俄乌双方损毁状态构成对比}
+\caption{俄乌双方损毁状态构成对比}
 \end{figure}
+
+\clearpage
 
 \begin{figure}
 \centering
 \includegraphics{../output/figures/09_status_and_type.png}
-\caption{图6: WarSpotting 俄方损失状态与装备类型分布}
+\caption{WarSpotting 俄方损失状态与装备类型分布}
 \end{figure}
 
 \hypertarget{ux7f6eux4fe1ux533aux95f4ux65b9ux6cd5ux6bd4ux8f83ux4e0e-monte-carlo-ux8986ux76d6ux7387}{%
@@ -722,19 +730,19 @@ Exact CI 通常略宽但更保守，Wald CI 较窄但在小 \(\lambda\)
 \begin{figure}
 \centering
 \includegraphics{../output/figures/03_ci_forest_plot.png}
-\caption{图7: Poisson 损失率置信区间森林图}
+\caption{Poisson 损失率置信区间森林图}
 \end{figure}
 
 \begin{figure}
 \centering
 \includegraphics{../output/figures/07_ci_width_comparison.png}
-\caption{图8: 不同置信区间方法的区间宽度比较}
+\caption{不同置信区间方法的区间宽度比较}
 \end{figure}
 
 \begin{figure}
 \centering
 \includegraphics{../output/figures/06_poisson_qqplot.png}
-\caption{图9: Poisson 拟合 Q-Q 诊断图}
+\caption{Poisson 拟合 Q-Q 诊断图}
 \end{figure}
 
 \hypertarget{block-bootstrap-ux7684-iid-vs-block-ux6bd4ux8f83}{%
@@ -769,7 +777,7 @@ Block Bootstrap 而非 IID Bootstrap 的核心理由。
 \begin{figure}
 \centering
 \includegraphics{../output/figures/04_bootstrap_distribution.png}
-\caption{图10: IID Bootstrap 与 Block Bootstrap 分布对比}
+\caption{IID Bootstrap 与 Block Bootstrap 分布对比}
 \end{figure}
 
 \hypertarget{ux6218ux4e89ux9636ux6bb5ux95f4ux5deeux5f02}{%
@@ -800,13 +808,13 @@ Phase 9 (2025.1--2026.6) 近期 & 7.79 & 0.12 & 519 \\
 \begin{figure}
 \centering
 \includegraphics{../output/figures/01_daily_loss_timeseries.png}
-\caption{图11: WarSpotting 俄方日度损失时间序列}
+\caption{WarSpotting 俄方日度损失时间序列}
 \end{figure}
 
 \begin{figure}
 \centering
 \includegraphics{../output/figures/02_phase_boxplot.png}
-\caption{图12: 不同战争阶段的日度损失分布}
+\caption{不同战争阶段的日度损失分布}
 \end{figure}
 
 \hypertarget{ux58f0ux79f0-vs-ux9a8cux8bc1ux62a5ux544aux504fux5deeux7684ux91cfux5316}{%
@@ -836,7 +844,7 @@ km，影像获取难度远大于前线装备；（2）乌克兰方面可能将``
 \begin{figure}
 \centering
 \includegraphics{../output/figures/08_claims_vs_verified.png}
-\caption{图13: 乌克兰官方声称与 WarSpotting 影像验证对比}
+\caption{乌克兰官方声称与 WarSpotting 影像验证对比}
 \end{figure}
 
 \hypertarget{ux57faux4e8eux89c2ux6d4bux6982ux7387ux6821ux6b63ux7684ux7387ux6bd4ux63a8ux65ad}{%
@@ -916,7 +924,7 @@ Bootstrap（\(B=5000\)）框架进行偏误校正推断。由于观测概率本�
 \begin{figure}
 \centering
 \includegraphics{../output/figures/15_sensitivity_heatmap.png}
-\caption{图14: 观测概率灵敏度热力图}
+\caption{观测概率灵敏度热力图}
 \end{figure}
 
 \hypertarget{ux88c5ux5907ux635fux5931ux7684ux7a7aux95f4ux5206ux5e03}{%
@@ -948,7 +956,7 @@ Q1：主战区转移至 \textbf{East}（卢甘斯克-顿涅茨克）
 \begin{figure}
 \centering
 \includegraphics{../output/figures/14_spatial_distribution.png}
-\caption{图15: WarSpotting 俄方装备损失空间分布}
+\caption{WarSpotting 俄方装备损失空间分布}
 \end{figure}
 
 \hypertarget{ux5468ux5ea6-block-bootstrap-ux8865ux5145ux9a8cux8bc1}{%
@@ -986,7 +994,7 @@ IID Bootstrap 的结论}（1.95--2.35 倍），验证了时间依赖性处理的
 \begin{figure}
 \centering
 \includegraphics{../output/figures/16_weekly_bootstrap.png}
-\caption{图16: 周度 Block Bootstrap 分布与 BCa 区间}
+\caption{周度 Block Bootstrap 分布与 BCa 区间}
 \end{figure}
 
 \begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
@@ -1161,11 +1169,5 @@ Block Bootstrap BCa 时间依赖性校正 → E-test 精确检验 → 分层异�
   WarSpotting. Automated visual identification of military equipment
   losses. \url{https://warspotting.net}
 \end{enumerate}
-
-\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
-
-\emph{本文为《数理统计》课程大作业（选题
-T1）。所有数据来源于公开渠道（Oryx、Kaggle、Google
-Sheets），代码可在项目仓库中获取。分析结果不代表任何政治立场。}
 
 \end{document}
